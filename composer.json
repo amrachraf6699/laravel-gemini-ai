@@ -1,0 +1,34 @@
+{
+    "name": "amrachraf6699/laravel-gemini-ai",
+    "description": "A Laravel package for integrating with Google's Gemini AI API",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Amrachraf6699\\LaravelGeminiAi\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Amr Achraf",
+            "email": "amrachraf6690@icloud.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "php": "^8.0",
+        "illuminate/support": "^8.0|^9.0|^10.0|^11.0",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Amrachraf6699\\LaravelGeminiAi\\Providers\\GeminiAiServiceProvider"
+            ],
+            "aliases": {
+                "GeminiAi": "Amrachraf6699\\LaravelGeminiAi\\Facades\\GeminiAi"
+            }
+        }
+    }
+}
