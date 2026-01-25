@@ -8,7 +8,7 @@ A Laravel package for easy integration with Google's Gemini AI API. This package
 ## Requirements
 
 - PHP 8.0 or higher
-- Laravel 8.0 or higher
+- Laravel 8.0 through 12.x
 - Google Gemini AI API key (you can get it from [Google AI Studio](https://ai.google.dev/))
 
 ## Installation
