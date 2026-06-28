@@ -31,8 +31,9 @@ return [
     |
     */
     'models' => [
-        'text' => env('GEMINI_TEXT_MODEL', 'gemini-2.0-flash'),
-        'image' => env('GEMINI_IMAGE_MODEL', 'gemini-2.0-flash-exp'),
-        'vision' => env('GEMINI_VISION_MODEL', 'gemini-2.0-flash'),
+        'text' => env('GEMINI_TEXT_MODEL', 'gemini-3.5-flash'),
+        'image' => env('GEMINI_IMAGE_MODEL', 'gemini-3.1-flash-image'),
+        'vision' => env('GEMINI_VISION_MODEL', 'gemini-3.5-flash'),
+        'embedding' => env('GEMINI_EMBEDDING_MODEL', 'gemini-embedding-2'),
     ],
 ];

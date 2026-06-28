@@ -3,122 +3,231 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/amrachraf6699/laravel-gemini-ai.svg?style=flat-square)](https://packagist.org/packages/amrachraf6699/laravel-gemini-ai)
 [![Total Downloads](https://img.shields.io/packagist/dt/amrachraf6699/laravel-gemini-ai.svg?style=flat-square)](https://packagist.org/packages/amrachraf6699/laravel-gemini-ai)
 
-A Laravel package for easy integration with Google's Gemini AI API. This package supports text generation, image generation, and image analysis through a simple and easy-to-use interface.
+A Laravel package for easy integration with Google's Gemini API. It supports the Gemini Interactions API, text generation, structured JSON output, multi-turn chat, image generation and editing, image analysis, embeddings, token counting, and common Gemini tools.
 
 ## Requirements
 
 - PHP 8.0 or higher
 - Laravel 8.0 through 12.x
-- Google Gemini AI API key (you can get it from [Google AI Studio](https://ai.google.dev/))
+- Google Gemini API key from [Google AI Studio](https://ai.google.dev/)
 
 ## Installation
-
-You can install the package via Composer:
 
 ```bash
 composer require amrachraf6699/laravel-gemini-ai
 ```
 
-## Configuration
-
-After installing the package, publish the configuration file:
+Publish the configuration file:
 
 ```bash
 php artisan vendor:publish --tag=gemini-config
 ```
 
-Then, add your API key to your `.env` file:
+Add your API key to `.env`:
 
 ```bash
 GEMINI_API_KEY=your-api-key-here
 ```
 
-You can also customize the models used:
+Optional model overrides:
 
 ```bash
-GEMINI_TEXT_MODEL=gemini-2.0-flash
-GEMINI_IMAGE_MODEL=gemini-2.0-flash-exp
-GEMINI_VISION_MODEL=gemini-2.0-flash
+GEMINI_TEXT_MODEL=gemini-3.5-flash
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
+GEMINI_VISION_MODEL=gemini-3.5-flash
+GEMINI_EMBEDDING_MODEL=gemini-embedding-2
 ```
 
 ## Usage
 
-### Text Generation
+### Interactions API
+
+Use `interact()` for new Gemini features. It returns parsed helpers and the raw API response.
 
 ```php
 use Amrachraf6699\LaravelGeminiAi\Facades\GeminiAi;
 
-// Generate simple text
-$response = GeminiAi::generateText("Tell me about black holes.");
+$response = GeminiAi::interact('Write a welcome email for a SaaS trial user.', [
+    'system_instruction' => 'You write concise, friendly product emails.',
+    'generation_config' => [
+        'temperature' => 0.6,
+    ],
+]);
 
-// Using additional options
-$response = GeminiAi::generateText("Write a short story about space exploration.", [
-    'model' => 'gemini-2.0-pro', // Use a custom model
-    'raw' => true, // Return the full response instead of just the text
+echo $response['text'];
+
+// Available helpers:
+// $response['interaction_id']
+// $response['text']
+// $response['image']
+// $response['images']
+// $response['steps']
+// $response['usage']
+// $response['raw']
+```
+
+### Text Generation
+
+Existing text generation still works:
+
+```php
+$response = GeminiAi::generateText('Tell me about black holes.');
+
+$raw = GeminiAi::generateText('Write a short story about space exploration.', [
+    'model' => 'gemini-3.5-flash',
+    'raw' => true,
     'generationConfig' => [
         'temperature' => 0.7,
-        'maxOutputTokens' => 1000
-    ]
+        'maxOutputTokens' => 1000,
+    ],
 ]);
 ```
 
-### Image Generation
+### Structured JSON
 
 ```php
-// Generate an image
-$response = GeminiAi::generateImage("A futuristic city skyline at sunset.");
+$response = GeminiAi::generateJson(
+    'Extract the customer name and requested plan from this sentence: Sarah wants Pro.',
+    [
+        'type' => 'object',
+        'properties' => [
+            'customer_name' => ['type' => 'string'],
+            'plan' => ['type' => 'string'],
+        ],
+        'required' => ['customer_name', 'plan'],
+    ]
+);
 
-// Using the response
-if (!empty($response['image_url'])) {
-    // Use $response['image_url'] to display the image
-    echo '<img src="'.$response['image_url'].'" alt="Generated Image">';
-    
-    // Any text associated with the image
-    echo $response['text'];
-}
+$data = $response['json'];
+```
+
+If the model returns invalid JSON, `json` is `null`, `json_error` contains the decode error, and `text` contains the raw model output.
+
+### Multi-turn Chat
+
+```php
+$first = GeminiAi::chat('My app is a Laravel CRM. Suggest a homepage headline.');
+
+$second = GeminiAi::chat(
+    'Make it shorter.',
+    $first['interaction_id']
+);
+
+echo $second['text'];
+```
+
+### Tools
+
+```php
+$response = GeminiAi::interact('What changed in Laravel recently?', [
+    'tools' => [
+        GeminiAi::googleSearchTool(),
+    ],
+]);
+
+$response = GeminiAi::interact('Summarize https://laravel.com/docs', [
+    'tools' => [
+        GeminiAi::urlContextTool(),
+    ],
+]);
+
+$response = GeminiAi::interact('Calculate compound growth for 12% over 5 years.', [
+    'tools' => [
+        GeminiAi::codeExecutionTool(),
+    ],
+]);
+```
+
+### Image Generation and Editing
+
+```php
+$response = GeminiAi::generateImage('A clean product mockup of a Laravel dashboard.', [
+    'aspect_ratio' => '16:9',
+    'image_size' => '2K',
+]);
+
+echo '<img src="'.$response['image_url'].'" alt="Generated image">';
+```
+
+Use reference images for edits or style transfer:
+
+```php
+$response = GeminiAi::generateImage('Replace the background with a bright office.', [
+    'image' => public_path('uploads/product-photo.png'),
+    'mime_type' => 'image/png',
+]);
 ```
 
 ### Image Analysis
 
 ```php
-// Analyze an image using an uploaded file
 $imageFile = $request->file('image');
-$response = GeminiAi::processImageText("Describe this image in detail.", $imageFile);
+$response = GeminiAi::processImageText('Describe this image in detail.', $imageFile);
 
-// Analyze an image using a file path
-$response = GeminiAi::processImageText("What's in this picture?", public_path('images/example.jpg'));
+$response = GeminiAi::processImageText('What is in this picture?', public_path('images/example.jpg'));
 
-// Analyze an image using binary content or base64 string
 $imageContent = file_get_contents('path/to/image.jpg');
-$response = GeminiAi::processImageText("Analyze this image.", $imageContent);
+$response = GeminiAi::processImageText('Analyze this image.', $imageContent, [
+    'mime_type' => 'image/jpeg',
+]);
+```
+
+### Embeddings
+
+```php
+$vector = GeminiAi::embed('Laravel makes building web applications productive.');
+```
+
+Use `raw` to inspect the full embedding response:
+
+```php
+$response = GeminiAi::embed('Semantic search input.', [
+    'raw' => true,
+]);
+```
+
+### Token Counting
+
+```php
+$tokens = GeminiAi::countTokens('Estimate this prompt before sending it.');
+
+echo $tokens['totalTokens'] ?? 0;
 ```
 
 ## Error Handling
 
-The package throws exceptions when errors occur, so it's recommended to use try/catch:
+The package throws exceptions when errors occur:
 
 ```php
 try {
-    $response = GeminiAi::generateText("Tell me a joke.");
+    $response = GeminiAi::generateText('Tell me a joke.');
 } catch (\Exception $e) {
-    // Handle the error
-    Log::error('Gemini API Error: ' . $e->getMessage());
+    Log::error('Gemini API Error: '.$e->getMessage());
 }
 ```
 
 ## Available Options
 
-All methods support an `options` array that can be used to customize API requests:
+Most methods support an `options` array.
 
 | Option | Description |
 |--------|-------------|
 | `model` | Custom model to use |
-| `raw` | When set to `true`, returns the full API response instead of extracting content |
-| `generationConfig` | Array of configuration options for the model (like temperature, tokens) |
+| `raw` | Return the full API response for methods that support raw output |
+| `generationConfig` / `generation_config` | Generation settings such as temperature and token limits |
+| `system_instruction` | System instruction for Interactions |
+| `response_format` | Text, JSON Schema, or image response format |
+| `tools` | Tool declarations such as Google Search, URL Context, and Code Execution |
+| `previous_interaction_id` | Continue a server-side Interactions conversation |
+| `store` | Store an interaction for later continuation |
+| `background` | Request background execution when supported by the API |
+| `mime_type` | Input image MIME type fallback |
+| `aspect_ratio` | Image output aspect ratio |
+| `image_size` | Image output size |
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit pull requests or open issues on GitHub.
+Contributions are welcome. Please feel free to submit pull requests or open issues on GitHub.
 
 ## License
 
